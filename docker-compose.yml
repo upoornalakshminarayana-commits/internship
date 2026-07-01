@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cc_db
+    restart: always
+    environment:
+      POSTGRES_DB: careerconnect
+      POSTGRES_USER: cc_user
+      POSTGRES_PASSWORD: cc_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: cc_backend
+    restart: always
+    command: >
+      sh -c "python manage.py makemigrations &&
+             python manage.py migrate &&
+             gunicorn --bind 0.0.0.0:8000 core.wsgi:application"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=production-secret-key-change-me
+      - DEBUG=False
+      - ALLOWED_HOSTS=*
+      - DB_NAME=careerconnect
+      - DB_USER=cc_user
+      - DB_PASSWORD=cc_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: cc_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
